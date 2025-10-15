@@ -32,11 +32,13 @@ class EventService {
             }
 
             const hashMap = new Map();
+            const valuesMap = new Map();
             const result = [];
 
             for(let i=0; i<events.length; i++){
                 const currEvent = events.at(i);
                 let currHash = '';
+                
                 for(let j=0; j<aggregations.length; j++){
                     const currAggr = aggregations.at(j);
                     if(!Object.hasOwn(this.keysToAggregate, currAggr)){
@@ -48,8 +50,10 @@ class EventService {
                         }
                     }
                     const currKey = this.keysToAggregate[currAggr];
-                    currHash += `${currKey}U+003A${currEvent[currKey]?.id}U+002C${currEvent[currKey]?.name}U+002C${currEvent[currKey]}U+003B`;  
+                    currHash += `${currKey}|${currEvent[currKey]?.id?currEvent[currKey]?.id:currEvent[currKey]};`;
+                    valuesMap.set(`${currKey}|${currEvent[currKey]?.id?currEvent[currKey]?.id:currEvent[currKey]}`, currEvent[currKey]);
                 }
+
                 if(!hashMap.has(currHash)){
                     hashMap.set(currHash, {
                         hours: 0
@@ -61,27 +65,13 @@ class EventService {
                 }
                 currObj.hours += Number(currEvent.hours);
             }
-
+            
             hashMap.forEach((value, records) => {
-                const tmpObj = {}
-                records.split('U+003B').forEach(function(record){
-                    
-                    if(!record){
-                        return;
-                    }
-
-                    const [key, values] = record.split('U+003A');
-                    
-                    const arrValues = values.split('U+002C')
-                    if(arrValues[0] == 'undefined'){
-                        tmpObj[key] = arrValues[2];
-                        return;
-                    }
-                    tmpObj[key] = {};
-                    tmpObj[key].id = arrValues[0];
-                    tmpObj[key].name = arrValues[1];
+                let tmpObj = {};
+                records.split(';').forEach(record=>{
+                    tmpObj[record.split('|')[0]] = valuesMap.get(record);
                 })
-                tmpObj.hours = value?.hours;
+                tmpObj = {...tmpObj, ...value}
                 result.push(tmpObj);
             });
 
